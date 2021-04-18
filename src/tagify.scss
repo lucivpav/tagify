@@ -18,13 +18,12 @@
     $tag-bg                  : #E5E5E5 !default;
     $tag-hover               : #D3E2E2 !default;
     $tag-remove              : #D39494 !default;
-    $tag-remove-btn-color    : $tag-text-color !default;
+    $tag-remove-btn-color    : rgb(179, 179, 179) !default;
     $tag-remove-btn-bg       : none !default;
     $tag-remove-btn-bg--hover: darken($tag-remove, 8) !default;
     $tag-invalid-color       : $tag-remove !default;
     $tag-invalid-bg          : rgba($tag-remove, .5) !default;
     $tag-inset-shadow-size   : 1.1em !default;
-    $tag-hide-transition     : .3s !default;
     $placeholder-color       : rgba($tag-text-color, .4) !default;
     $placeholder-color-focus : rgba($tag-text-color, .25) !default;
     $input-color             : inherit !default;
@@ -50,7 +49,6 @@
     --input-color              : #{$input-color};
     --tag--min-width           : #{$tag-min-width};
     --tag--max-width           : #{$tag-max-width};
-    --tag-hide-transition      : #{$tag-hide-transition};
     --placeholder-color        : #{$placeholder-color};
     --placeholder-color-focus  : #{$placeholder-color-focus};
     --loader-size              : .8em;
@@ -64,8 +62,6 @@
     }
 
     @mixin placeholder( $show:true ){
-        transition: .2s ease-out;
-
         @if $show == true {
             opacity: 1;
             transform: none;
@@ -121,7 +117,6 @@
     outline       : none;
     position      : relative;
     box-sizing    : border-box;
-    transition    : .1s;
 
     &:hover{
         border-color: $tags-hover-border-color;
@@ -129,7 +124,6 @@
     }
 
     &.tagify--focus{
-      transition: 0s;
       border-color: $tags-focus-border-color;
       border-color: var(--tags-focus-border-color);
     }
@@ -191,7 +185,6 @@
         z-index    : 1;
         outline    : none;
         cursor     : default;
-        transition : .13s ease-out;
 
         > div{  // :not([contenteditable])
             vertical-align : top;
@@ -205,7 +198,6 @@
             border-radius  : 3px;
          // user-select    : none;  // should allow selecting text if the user wishes to copy something
             white-space    : nowrap;
-            transition     : .13s ease-out;
 
             > *{
                 white-space    : pre-wrap;
@@ -217,8 +209,6 @@
                 max-width      : $tag-max-width;
                 min-width      : var(--tag--min-width, $tag-min-width);
                 max-width      : var(--tag--max-width, $tag-max-width);
-                transition     : .8s ease, .1s color;
-
 
                 &[contenteditable]{
                     outline: none;
@@ -238,28 +228,10 @@
                 left:0; top:0; right:0; bottom:0;
                 z-index: -1;
                 pointer-events:none;
-                transition: 120ms ease;
                 animation : tags--bump .3s ease-out 1;
 
                 box-shadow: 0 0 0 $tag-inset-shadow-size $tag-bg inset;
                 box-shadow: 0 0 0 var(--tag-inset-shadow-size, $tag-inset-shadow-size) var(--tag-bg, $tag-bg) inset;
-            }
-        }
-
-        &:hover:not([readonly]){
-            div{  // :not([contenteditable])
-                &::before{
-                    $size: -$tagMargin/2;
-                    $size: -2px;
-                    top:$size; right:$size; bottom:$size; left:$size;
-                    box-shadow: 0 0 0 $tag-inset-shadow-size $tag-hover inset;
-                    box-shadow: 0 0 0 var(--tag-inset-shadow-size, $tag-inset-shadow-size) var(--tag-hover, $tag-hover) inset;
-                  //  box-shadow: 0 0 0 0 $tag-remove inset
-                }
-                // background:nth($tagColor,2);
-                //background:none;
-                // box-shadow: 0 0 0 2px $tag-hover inset;
-                // transition:50ms;
             }
         }
 
@@ -289,8 +261,6 @@
             margin-right   : 0;
             opacity        : 0;
             transform      : scale(0);
-            transition     : $tag-hide-transition;
-            transition     : var(--tag-hide-transition, $tag-hide-transition);
             pointer-events : none;
 
             > div > *{
@@ -311,7 +281,6 @@
                     &::before{
                         box-shadow: 0 0 0 $tag-inset-shadow-size $tag-invalid-bg inset !important;
                         box-shadow: 0 0 0 var(--tag-inset-shadow-size, $tag-inset-shadow-size) var(--tag-invalid-bg, $tag-invalid-bg) inset !important;
-                        transition: .2s;
                     }
                 }
             }
@@ -357,7 +326,7 @@
         }
 
         &__removeBtn{
-            $size: 14px;
+            $size: 18px;
 
             order          : 5;
             display        : inline-flex;
@@ -377,26 +346,13 @@
             margin-left    : auto;
 
             overflow       : hidden;
-            transition     : .2s ease-out;
 
             &::after{
                 content: "\00D7";
-                transition: .3s, color 0s;
             }
 
             &:hover{
-                color: white;
-                background: $tag-remove-btn-bg--hover;
-                background: var(--tag-remove-btn-bg--hover, $tag-remove-btn-bg--hover);
-                // + span{ box-shadow: 0 0 0 2px $tag-remove inset; transition:.2s; }
-                + div{
-                    > span{ opacity:.5; } // filter:blur(.2px);
-                    &::before{
-                        box-shadow: 0 0 0 $tag-inset-shadow-size rgba($tag-remove, .3) inset !important;
-                        box-shadow: 0 0 0 var(--tag-inset-shadow-size, $tag-inset-shadow-size) var(--tag-remove-bg, rgba($tag-remove, .3)) inset !important;
-                        transition: box-shadow .2s;
-                    }
-                }
+                color: black;
             }
         }
     }
@@ -572,7 +528,6 @@
             height: $size/2;
             pointer-events: none;
             transform: translate(-150%, -50%) scaleX(1.2) rotate(90deg);
-            transition: .2s ease-in-out;
         }
 
         &[aria-expanded=true]{
@@ -639,7 +594,6 @@
             border-top-width: 0;
             box-shadow: 0 2px 4px -2px rgba(black,.2);
            // box-sizing: border-box;
-            transition: $trans;
 
             &:hover{
                 overflow: auto;
