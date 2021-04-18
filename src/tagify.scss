@@ -228,7 +228,6 @@
                 left:0; top:0; right:0; bottom:0;
                 z-index: -1;
                 pointer-events:none;
-                animation : tags--bump .3s ease-out 1;
 
                 box-shadow: 0 0 0 $tag-inset-shadow-size $tag-bg inset;
                 box-shadow: 0 0 0 var(--tag-inset-shadow-size, $tag-inset-shadow-size) var(--tag-bg, $tag-bg) inset;
