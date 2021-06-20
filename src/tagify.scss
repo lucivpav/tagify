@@ -1,3 +1,5 @@
+@use "sass:math";
+
 :root {
     --tagify-dd-color-primary: rgb(53,149,246); // should be same as "$tags-focus-border-color"
     --tagify-dd-bg-color: white;
@@ -341,7 +343,7 @@
 
             width          : $size;
             height         : $size;
-            margin-right   : $size/3;
+            margin-right   : $size / 3;
             margin-left    : auto;
 
             overflow       : hidden;
@@ -486,7 +488,7 @@
             in "mix mode" the tags are inside the "input" element
         */
         #{ $self }__tag{
-            margin: 0;  // a developer can choose to have automatic horizontal margin ("1ch" advised) between tags or use manual keyboard spaces
+            margin: 0 1px;
             // line-height: 1.1;
 
             > div{
@@ -523,8 +525,8 @@
             right: 0;
             bottom: 0;
             font: $size monospace;
-            line-height: $size/2;
-            height: $size/2;
+            line-height: $size / 2;
+            height: $size / 2;
             pointer-events: none;
             transform: translate(-150%, -50%) scaleX(1.2) rotate(90deg);
         }
@@ -584,7 +586,7 @@
 
         &__wrapper{
             max-height: 300px;
-            overflow: hidden;
+            overflow: auto;
             background: $tagify-dd-bg-color;
             background: var(--tagify-dd-bg-color);
             border: 1px solid $tags-focus-border-color;

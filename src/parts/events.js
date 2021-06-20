@@ -53,6 +53,7 @@ export default {
             // this event should never be unbinded:
             // IE cannot register "input" events on contenteditable elements, so the "keydown" should be used instead..
             this.DOM.input.addEventListener(this.isIE ? "keydown" : "input", _CB[this.isIE ? "onInputIE" : "onInput"].bind(this));
+            window.addEventListener('keydown', _CB.onWindowKeyDown.bind(this));
 
             if( this.settings.isJQueryPlugin )
                 jQuery(this.DOM.originalInput).on('tagify.removeAllTags', this.removeAllTags.bind(this))
@@ -93,7 +94,7 @@ export default {
 
             if( type == 'blur' ){
                 if( e.relatedTarget === this.DOM.scope ){
-                    this.dropdown.hide.call(this)
+                    this.dropdown.hide()
                     this.DOM.input.focus()
                     return
                 }
@@ -116,7 +117,7 @@ export default {
                 else if( e.type == "blur" ){
                     this.trigger("blur", eventData)
                     this.loading(false)
-                    this.dropdown.hide.call(this)
+                    this.dropdown.hide()
                     // reset state which needs reseting
                     this.state.dropdown.visible = undefined
                     this.setStateSelection()
@@ -129,7 +130,7 @@ export default {
                 this.trigger("focus", eventData)
                 //  e.target.classList.remove('placeholder');
                 if( _s.dropdown.enabled === 0 ){  // && _s.mode != "select"
-                    this.dropdown.show.call(this)
+                    this.dropdown.show()
                 }
                 return
             }
@@ -155,7 +156,33 @@ export default {
             }
 
             this.DOM.input.removeAttribute('style')
-            this.dropdown.hide.call(this)
+            this.dropdown.hide()
+        },
+
+        onWindowKeyDown(e){
+            var focusedElm = document.activeElement,
+                isTag = focusedElm.classList.contains(this.settings.classNames.tag),
+                isBelong = isTag && this.DOM.scope.contains(document.activeElement),
+                nextTag;
+
+            if( !isBelong ) return
+
+            nextTag = focusedElm.nextElementSibling
+
+            switch( e.key ){
+                // remove tag if has focus
+                case 'Backspace': {
+                    this.removeTags(focusedElm);
+                    (nextTag ? nextTag : this.DOM.input).focus()
+                    break;
+                }
+
+                // edit tag if has focus
+                case 'Enter': {
+                    setTimeout(this.editTag.bind(this), 0, focusedElm);
+                    break;
+                }
+            }
         },
 
         onKeydown(e){
@@ -175,6 +202,7 @@ export default {
                         this.state.actions.ArrowLeft = true
                         break
                     }
+
                     case 'Delete':
                     case 'Backspace' : {
                         if( this.state.editing ) return
@@ -185,8 +213,16 @@ export default {
                             lastInputValue = decode(this.DOM.input.innerHTML),
                             lastTagElems = this.getTagElms(),
                             //  isCaretInsideTag = sel.anchorNode.parentNode('.' + this.settings.classNames.tag),
+                            tagBeforeCaret,
                             tagElmToBeDeleted,
                             firstTextNodeBeforeTag;
+
+                        if( this.settings.backspace == 'edit' && isCaretAfterTag ){
+                            tagBeforeCaret = sel.anchorNode.nodeType == 1 ? null : sel.anchorNode.previousElementSibling;
+                            setTimeout(this.editTag.bind(this), 0, tagBeforeCaret); // timeout is needed to the last cahacrter in the edited tag won't get deleted
+                            e.preventDefault() // needed so the tag elm won't get deleted
+                            return;
+                        }
 
                         if( isChromeAndroidBrowser() && isCaretAfterTag ){
                             firstTextNodeBeforeTag = getfirstTextNode(isCaretAfterTag)
@@ -328,7 +364,7 @@ export default {
                 case 'ArrowDown' :
                     // if( this.settings.mode == 'select' ) // issue #333
                     if( !this.state.dropdown.visible )
-                        this.dropdown.show.call(this)
+                        this.dropdown.show()
                     break;
 
                 case 'ArrowRight' : {
@@ -368,7 +404,6 @@ export default {
                 eventData = {value, inputElm:this.DOM.input};
 
             eventData.isValid = this.validateTag({value});
-            this.trigger('input', eventData) // "input" event must be triggered at this point, before the dropdown is shown
 
             // for IE; since IE doesn't have an "input" event so "keyDown" is used instead to trigger the "onInput" callback,
             // and so many keys do not change the input, and for those do not continue.
@@ -385,8 +420,10 @@ export default {
                 }
             }
             else if( this.settings.dropdown.enabled >= 0 ){
-                this.dropdown[showSuggestions ? "show" : "hide"].call(this, value);
+                this.dropdown[showSuggestions ? "show" : "hide"](value);
             }
+
+            this.trigger('input', eventData) // "input" event must be triggered at this point, before the dropdown is shown
         },
 
         onMixTagsInput( e ){
@@ -463,7 +500,7 @@ export default {
                             this.state.tag.value = this.state.tag.value.replace(_s.delimiters, '')
                             this.state.tag.delimiters = matchDelimiters[0]
                             this.addTags(this.state.tag.value, _s.dropdown.clearOnSelect)
-                            this.dropdown.hide.call(this)
+                            this.dropdown.hide()
                             return
                         }
 
@@ -512,7 +549,7 @@ export default {
                 this.trigger("input", extend({}, this.state.tag, {textContent:this.DOM.input.textContent}))
 
                 if( this.state.tag )
-                    this.dropdown[showSuggestions ? "show" : "hide"].call(this, this.state.tag.value);
+                    this.dropdown[showSuggestions ? "show" : "hide"](this.state.tag.value);
             }, 10)
         },
 
@@ -559,33 +596,49 @@ export default {
 
                 if( timeDiffFocus > 500 ){
                     if( this.state.dropdown.visible )
-                        this.dropdown.hide.call(this)
+                        this.dropdown.hide()
                     else if( _s.dropdown.enabled === 0 && _s.mode != 'mix' )
-                        this.dropdown.show.call(this)
+                        this.dropdown.show()
                     return
                 }
             }
 
             if( _s.mode == 'select' )
-                !this.state.dropdown.visible && this.dropdown.show.call(this);
+                !this.state.dropdown.visible && this.dropdown.show();
         },
 
         // special proccess is needed for pasted content in order to "clean" it
         onPaste(e){
-            var clipboardData, pastedData;
+            var clipboardData, pastedText;
 
             e.preventDefault()
 
-            if( this.settings.readonly ) return;
+            if( this.settings.readonly ) return
 
             // Get pasted data via clipboard API
             clipboardData = e.clipboardData || window.clipboardData
-            pastedData = clipboardData.getData('Text')
+            pastedText = clipboardData.getData('Text')
 
-            this.injectAtCaret(pastedData, window.getSelection().getRangeAt(0))
+            this.settings.hooks.beforePaste(e, {tagify:this, pastedText, clipboardData})
+                .then(result => {
+                    if( result === undefined )
+                        result = pastedText;
 
-            if( this.settings.mode != 'mix' )
-                this.addTags(this.DOM.input.textContent, true)
+                    if( result ){
+                        this.injectAtCaret(result, window.getSelection().getRangeAt(0))
+
+                        if( this.settings.mode == 'mix' ){
+                            this.events.callbacks.onMixTagsInput.call(this, e);
+                        }
+
+                        else if( this.settings.pasteAsTags )
+                            this.addTags(result, true)
+
+                        else
+                            this.state.inputText = result
+                    }
+                })
+                .catch(err => err)
         },
 
         onEditTagInput( editableElm, e ){
@@ -613,7 +666,7 @@ export default {
                 //  "onEditTagInput" but "this.state.editing" will be "false"
                 if( this.state.editing )
                     this.state.editing.value = value
-                this.dropdown.show.call(this, value)
+                this.dropdown.show(value)
             }
 
             this.trigger("edit:input", {
@@ -646,6 +699,7 @@ export default {
                 originalData = this.tagData(tagElm).__originalData, // pre-edit data
                 hasChanged   = tagElm.innerHTML != tagElm.__tagifyTagData.__originalHTML,
                 isValid      = this.validateTag({[_s.tagTextProp]:textValue}),
+                hasMaxTags,
                 newTagData;
 
             //  this.DOM.input.focus()
@@ -660,13 +714,26 @@ export default {
                 return
             }
 
-            newTagData = this.getWhitelistItem(textValue) || extend({}, originalData, {[_s.tagTextProp]:textValue, value:textValue})
+            hasMaxTags = this.hasMaxTags()
+
+            newTagData = this.getWhitelistItem(textValue) || extend(
+                {},
+                originalData,
+                {
+                    [_s.tagTextProp]:textValue,
+                    value:textValue,
+                    __isValid:isValid
+                }
+            )
 
             _s.transformTag.call(this, newTagData, originalData)
 
             // MUST re-validate after tag transformation
-            // only validate the "tagTextProp" because is the only thing that metters for validation
-            isValid = this.validateTag({[_s.tagTextProp]:newTagData[_s.tagTextProp]})
+            // only validate the "tagTextProp" because is the only thing that metters for validating an edited tag.
+            // -- Scenarios: --
+            // 1. max 3 tags allowd. there are 4 tags, one has invalid input and is edited to a valid one, and now should be marked as "not allowed" because limit of tags has reached
+            // 2. max 3 tags allowed. there are 3 tags, one is edited, and so max-tags vaildation should be OK
+            isValid = !hasMaxTags && this.validateTag({[_s.tagTextProp]:newTagData[_s.tagTextProp]})
 
             if( isValid !== true ){
                 this.trigger("invalid", { data:newTagData, tag:tagElm, message:isValid })

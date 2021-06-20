@@ -47,13 +47,14 @@
 - [Drag & Sort](#drag--sort)
   - [Integration example:](#integration-example)
 - [DOM Templates](#dom-templates)
-- [Suggestions selectbox](#suggestions-selectbox)
+- [Suggestions list](#suggestions-list)
   - [Example for a suggestion item alias](#example-for-a-suggestion-item-alias)
   - [Example whitelist:](#example-whitelist)
 - [Mixed-Content](#mixed-content)
 - [Single-Value](#single-value)
 - [React](#react)
   - [Update regarding `onChange` prop:](#update-regarding-onchange-prop)
+- [There is no more `e.target`, and to access the original DOM input element, do this: `e.detail.tagify.DOM.originalInput`.](#there-is-no-more-etarget-and-to-access-the-original-dom-input-element-do-this-edetailtagifydomoriginalinput)
     - [Updating the component's state](#updating-the-components-state)
 - [jQuery version](#jquery-version)
 - [CSS Variables](#css-variables)
@@ -91,7 +92,7 @@ var tagify = new Tagify(...)
 * Supports [single-value](#single-value) mode (like `<select>`)
 * Supports whitelist/blacklist
 * Supports Templates for: <em>component wrapper</em>, <em>tag items</em>, <em>suggestion list</em> & <em>suggestion items</em>
-* Shows suggestions selectbox (flexiable settings & styling) at *full (component) width* or *next to* the typed texted (caret)
+* Shows suggestions list (flexiable settings & styling) at *full (component) width* or *next to* the typed texted (caret)
 * Allows setting suggestions' [aliases](#example-for-a-suggestion-item-alias) for easier fuzzy-searching
 * Auto-suggest input as-you-type with ability to auto-complete
 * Can paste in multiple values: `tag 1, tag 2, tag 3` or even newline-separated tags
@@ -194,22 +195,21 @@ var input = document.querySelector('input'),
 tagify.on('input', onInput)
 
 function onInput( e ){
-  var value = e.detail.value;
-  tagify.settings.whitelist.length = 0; // reset the whitelist
+  var value = e.detail.value
+  tagify.whitelist = null // reset the whitelist
 
   // https://developer.mozilla.org/en-US/docs/Web/API/AbortController/abort
-  controller && controller.abort();
-  controller = new AbortController();
+  controller && controller.abort()
+  controller = new AbortController()
 
   // show loading animation and hide the suggestions dropdown
-  tagify.loading(true).dropdown.hide.call(tagify)
+  tagify.loading(true).dropdown.hide()
 
   fetch('http://get_suggestions.com?value=' + value, {signal:controller.signal})
     .then(RES => RES.json())
-    .then(function(whitelist){
-      // update inwhitelist Array in-place
-      tagify.settings.whitelist.splice(0, whitelist.length, ...whitelist)
-      tagify.loading(false).dropdown.show.call(tagify, value); // render the suggestions dropdown
+    .then(function(newWhitelist){
+      tagify.whitelist = newWhitelist // update inwhitelist Array in-place
+      tagify.loading(false).dropdown.show(value) // render the suggestions dropdown
     })
 }
 ```
@@ -267,17 +267,21 @@ which is a special template for rendering a suggestion item (in the dropdown lis
 
 [View templates](https://github.com/yairEO/tagify/blob/master/src/parts/templates.js)
 
-## Suggestions selectbox
-The suggestions selectbox is shown is a whitelist Array of Strings or Objects was passed in the settings when the Tagify instance was created.
-Suggestions list will only be rendered if there are at least two matching suggestions (case-insensitive).
+## Suggestions list
 
-The selectbox dropdown will be appended to the document's `<body>` element and will be rendered by default in a position below (bottom of) the Tagify element.
+<p align="center">
+  <img src="/docs/suggestions-list.apng" alt='suggestions list dropdown'/>
+</p>
+
+The suggestions list is a *whitelist Array* of *Strings* or *Objects* which was set in the [settings](#settings) Object when the Tagify instance was created, and can be set latet directly on the instance: `tagifyInstance.whitelist = ["tag1", "tag2", ...]`.
+
+The suggestions dropdown will be appended to the document's `<body>` element and will be rendered by default in a position below (bottom of) the Tagify element.
 Using the keyboard arrows up/down will highlight an option from the list, and hitting the Enter key to select.
 
-It is possible to tweak the selectbox dropdown via 2 settings:
+It is possible to tweak the list dropdown via 2 settings:
 
  - `enabled` - this is a numeral value which tells Tagify when to show the suggestions dropdown, when a minimum of N characters were typed.
- - `maxItems` - Limits the number of items the suggestions selectbox will render
+ - `maxItems` - Limits the number of items the suggestions list will render
 
 ```javascript
 var input = document.querySelector('input'),
@@ -391,27 +395,41 @@ Similar to native `<Select>` element, but allows typing text as value.
 ## React
 
 See [**live demo**](https://codesandbox.io/s/tagify-react-wrapper-oempc) for React integration examples.
+⚠️ Tagify is **not** a [controlled component](https://github.com/yairEO/tagify/issues/489#issuecomment-629316093).
 
 A Tagify React component is exported from [`react.tagify.js`](https://github.com/yairEO/tagify/blob/master/dist/react.tagify.js):
 
+---
 ### Update regarding `onChange` prop:
 I have changed how the `onChange` works internally within the Wrapper of Tagify
 so as of *March 30, 2021* the `e` argument will include a `detail` parameter with the value as string.
 There is no more `e.target`, and to access the original DOM input element, do this: `e.detail.tagify.DOM.originalInput`.
+----
 
 > Note: You will need to inport Tagify's CSS also, either by javasceript or by SCSS `@import` (which is preferable)
+> Also note that you will need to use [*dart-sass*](https://www.npmjs.com/package/sass) and not *node-sass* in order to compile the file.
+
 ```javascript
 import Tags from "@yaireo/tagify/dist/react.tagify" // React-wrapper file
 import "@yaireo/tagify/dist/tagify.css" // Tagify CSS
+
+// on tag add/edit/remove
+const onChange = useCallback((e) => {
+  console.log("CHANGED:"
+    , e.detail.tagify.value // Array where each tag includes tagify's (needed) extra properties
+    , e.detail.tagify.getCleanValue()) // Same as above, without the extra properties
+    , e.detail.value // a string representing the tags
+  )
+}, [])
 
 const App = () => {
   return (
     <Tags
       tagifyRef={tagifyRef} // optional Ref object for the Tagify instance itself, to get access to  inner-methods
       settings={settings}  // tagify settings object
-      value="a,b,c"
+      defaultValue="a,b,c"
       {...tagifyProps}   // dynamic props such as "loading", "showDropdown:'abc'", "value"
-      onChange={ e => console.log("CHANGED:", JSON.parse(e.detail.value)) }
+      onChange={onChange}
     />
   )
 })
@@ -429,7 +447,7 @@ const tagifyRef = useRef()
 <MixedTags
   settings={...}
   onChange={...}
-  value={`This is a textarea which mixes text with [[{"value":"tags"}]].`}
+  defaultValue={`This is a textarea which mixes text with [[{"value":"tags"}]].`}
 />
 ```
 
@@ -527,19 +545,46 @@ required          | <pre lang=html>`<input required>`</pre> | Adds a `required` 
 List of questions & scenarios which might come up during development with Tagify:
 
 <details>
+  <summary><strong>Dynamic whitelist</strong></summary>
+The whitelist initial value is set like so:
+
+```javascript
+const tagify = new Tagify(tagNode, {
+  whitelist: ["a", "b", "c"]
+})
+```
+
+If changes to the whitelist are needed, they should be done like so:
+
+**Incorrect:**
+
+```js
+tagify.settings.whitelist = ["foo", "bar"]
+```
+
+**Correct:**
+```js
+// set the whitelist directly on the instance and not on the "settings" property
+tagify.whitelist = ["foo", "bar"]
+```
+</details>
+
+---
+
+<details>
   <summary><strong>tags/whitelist data strcture</strong></summary>
 
 Tagify does not accept just *any* kind of data structure.<br>
 If a tag data is represented as an `Object`, it **must** contain a **unique** property `value`
 which Tagify uses to check if a tag already exists, among other things, so make sure it is present.
 
-**Incorrect**
+**Incorrect:**
 
 ```javascript
 [{ "id":1, "name":"foo bar" }]
 ```
 
-**Correct**
+**Correct:**
 
 ```javascript
 [{ "id":1, "value": 1, "name":"foo bar" }]
@@ -811,6 +856,7 @@ Name                   | Parameters                                  | Info
 ---------------------- | ------------------------------------------- | --------------------------------------------------------------------------
 beforeRemoveTag        | Array <sub>(of Objects)</sub>               | [Example](https://jsbin.com/xoseyux/edit?html,js,output)
 suggestionClick        | Object <sub>(click event data)</sub>        | [Example](https://jsbin.com/tuwihuf/edit?html,js,output)
+beforePaste            | `tagify`, `pastedText`, `clipboardData`     | Before pasted text was added to Tagify. *Resolve* with new paste value if needed
 
 ## [Settings](https://github.com/yairEO/tagify/blob/master/src/parts/defaults.js#L1)
 
@@ -831,23 +877,25 @@ autoComplete.rightKey     | <sub>Boolean</sub>           | false                
 whitelist                 | <sub>Array</sub>             | []                                          | An array of allowed tags (*Strings* or *Objects*). When using *Objects* in the *whitelist* array a `value` property is a must & should be unique. <br/>Also, the *whitelist used for auto-completion when `autoCompletion.enabled` is `true`
 blacklist                 | <sub>Array</sub>             | []                                          | An array of tags which aren't allowed
 addTagOnBlur              | <sub>Boolean</sub>           | true                                        | Automatically adds the text which was inputed as a tag when blur event happens
+pasteAsTags               | <sub>Boolean</sub>           | true                                        | Automatically converts pasted text into tags
 callbacks                 | <sub>Object</sub>            | {}                                          | Exposed callbacks object to be triggered on events: `'add'` / `'remove'` tags
 maxTags                   | <sub>Number</sub>            | Infinity                                    | Maximum number of allowed tags. when reached, adds a class "tagify--hasMaxTags" to `<Tags>`
 editTags                  | <sub>Object/Number</sub>     | {}                                          | `false` or `null` will disallow editing
-editTags.clicks           | <sub>Number</sub>            | 2                                           | Number of clicks to enter "edit-mode": 1 for single click. Any other value is considered as double-click
-editTags.keepInvalid      | <sub>Boolean</sub>           | true                                        | keeps invalid edits as-is until `esc` is pressed while in focus
+editTags.*clicks*         | <sub>Number</sub>            | 2                                           | Number of clicks to enter "edit-mode": 1 for single click. Any other value is considered as double-click
+editTags.*keepInvalid*    | <sub>Boolean</sub>           | true                                        | keeps invalid edits as-is until `esc` is pressed while in focus
 templates                 | <sub>Object</sub>            | <sub>`wrapper`, `tag`, `dropdownItem`</sub> | Object consisting of functions which return template strings
 validate                  | <sub>Function</sub>          |                                             | If the `pattern` setting does not meet your needs, use this function, which recieves *tag data object* as an argument and should return `true` if validaiton passed or `false`/`string` of not. A *string* may be returned as the reason of the validation failure.
 transformTag              | <sub>Function</sub>          |                                             | Takes a tag data as argument and allows mutating it before a tag is created or edited.<br>Should not `return` anything, only **mutate**.
 keepInvalidTags           | <sub>Boolean</sub>           | false                                       | If `true`, do not remove tags which did not pass validation
 skipInvalid               | <sub>Boolean</sub>           | false                                       | If `true`, do not add invalid, temporary, tags before automatically removing them
-backspace                 | <sub>*</sub>                 | true                                        | On pressing backspace key:<br> `true` - remove last tag <br>`edit` - edit last tag
+backspace                 | <sub>*</sub>                 | true                                        | On pressing backspace key:<br> `true` - remove last tag <br>`edit` - edit last tag<br>`false` - do nothing (useful for outside style)
 originalInputValueFormat  | <sub>Function</sub>          |                                             | If you wish your original input/textarea `value` property format to other than the default (which I recommend keeping) you may use this and make sure it returns a *string*.
-mixMode.insertAfterTag    | <sub>Node/String</sub>       | `\u00A0`                                    | `node` or `string` to add after a tag added |
+mixMode.*insertAfterTag*  | <sub>Node/String</sub>       | `\u00A0`                                    | `node` or `string` to add after a tag added |
+a11y.*focusableTags*      | <sub>Boolean</sub>           | false                                       | allows tags to get focus, and also to be deleted via <kbd>Backspace</kbd>
 dropdown.*enabled*        | <sub>Number</sub>            | 2                                           | Minimum characters input for showing a suggestions list. `false` will not render a suggestions list.
 dropdown.*caseSensitive*  | <sub>Boolean</sub>           | false                                       | if `true`, match **exact** item when a suggestion is selected (from the dropdown) and also more strict matching for dulpicate items. **Ensure** `fuzzySearch` is `false` for this to work.
 dropdown.*maxItems*       | <sub>Number</sub>            | 10                                          | Maximum items to show in the suggestions list
-dropdown.*classname*      | <sub>String</sub>            | `""`                                        | Custom *classname* for the dropdown suggestions selectbox
+dropdown.*classname*      | <sub>String</sub>            | `""`                                        | Custom *classname* for the dropdown suggestions list
 dropdown.*fuzzySearch*    | <sub>Boolean</sub>           | true                                        | Enables filtering dropdown items values' by string *containing* and not only *beginning*
 dropdown.*accentedSearch* | <sub>Boolean</sub>           | true                                        | Enable searching for <em>accented</em> items in the whitelist without typing exact match (#491)
 dropdown.*position*       | <sub>String</sub>            | `"all"`                                     | <ul><li>`manual` - will not render the dropdown, and you would need to do it yourself. [See demo](https://yaireo.github.io/tagify/#section-manual-suggestions)</li><li>`text` - places the dropdown next to the caret</li><li>`input` - places the dropdown next to the input (useful in rare situations)</li><li>`all` - normal, full-width design</li></ul>
